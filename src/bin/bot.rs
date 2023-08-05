@@ -1,33 +1,25 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::Query, http::StatusCode, response::IntoResponse, routing::get, Extension, Router,
+    extract::Query,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::get,
+    Extension,
+    Router,
     Server,
 };
+
+// use axum::{Extension, Server};
 
 use teloxide::{dispatching::update_listeners::webhooks, prelude::*, utils::command::BotCommands};
 
 use serde::Deserialize;
+// use std::net::SocketAddr;
 
 #[derive(Deserialize)]
 struct PostData {
     message: String,
-}
-
-#[derive(BotCommands, Clone)]
-#[command(
-    rename_rule = "lowercase",
-    description = "These commands are supported:"
-)]
-enum Command {
-    #[command(description = "display this text.")]
-    Help,
-    #[command(description = "Use this command to save a URL")]
-    Save(String),
-    #[command(description = "handle user's chat ID")]
-    ChatId,
-    #[command(description = "bind lc project to a chat ID")]
-    Bind,
 }
 
 async fn forward(
@@ -76,6 +68,22 @@ async fn main() {
         .expect("Couldn't setup webhook");
 
     Command::repl_with_listener(bot, answer, webhook_listener).await;
+}
+
+#[derive(BotCommands, Clone)]
+#[command(
+    rename_rule = "lowercase",
+    description = "These commands are supported:"
+)]
+enum Command {
+    #[command(description = "display this text.")]
+    Help,
+    #[command(description = "Use this command to save a URL")]
+    Save(String),
+    #[command(description = "handle user's chat ID")]
+    ChatId,
+    #[command(description = "bind lc project to a chat ID")]
+    Bind,
 }
 
 async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
