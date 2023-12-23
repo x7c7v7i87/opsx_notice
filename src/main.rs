@@ -1,109 +1,56 @@
+// use anyhow::Result;
+
 use std::sync::Arc;
 
-use axum::{
-    extract::Query, http::StatusCode, response::IntoResponse, routing::get, Extension, Router,
-    Server,
-};
+use axum::{routing::post, Extension, Router, Server};
 
-use teloxide::{dispatching::update_listeners::webhooks, prelude::*, utils::command::BotCommands};
+use teloxide::{dispatching::update_listeners::webhooks, prelude::*};
 
-use serde::Deserialize;
+use opsx_notice::telegram::{answer, notice as telegram_notice, Command};
 
-#[derive(Deserialize)]
-struct PostData {
-    message: String,
-}
+use opsx_notice::lark::msg::notice as lark_notice;
 
-#[derive(BotCommands, Clone)]
-#[command(
-    rename_rule = "lowercase",
-    description = "These commands are supported:"
-)]
-enum Command {
-    #[command(description = "display this text.")]
-    Help,
-    #[command(description = "Use this command to save a URL")]
-    Save(String),
-    #[command(description = "handle user's chat ID")]
-    ChatId,
-    #[command(description = "bind lc project to a chat ID")]
-    Bind,
-}
-
-async fn forward(
-    Query(data): Query<PostData>,
-    Extension(bot): Extension<Arc<Bot>>,
-) -> impl IntoResponse {
-    // use teloxide::types::ChatId;
-
-    let chat_id: i64 = -831239370; // 替换为你的群组 ID
-    let chat_id = ChatId(chat_id);
-
-    match bot.send_message(chat_id, &data.message).await {
-        Ok(_) => (StatusCode::OK, "Message sent successfully".to_string()),
-        Err(err) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Error sending message: {:?}", err),
-        ),
-    }
-}
+use opsx_notice::config::{BotCfg, LarkCfg};
 
 #[tokio::main]
 async fn main() {
-    let bot = Bot::new("are you token");
+    tracing_subscriber::fmt::init();
 
-    let addr_server = ([0, 0, 0, 0], 9191).into();
-    let addr_bot = ([0, 0, 0, 0], 8383).into();
-    let state = Arc::new(bot.clone());
+    let cfg: BotCfg = BotCfg::new("./cfg.json").expect("Unable to parse JSON");
+
+    let bot_token = cfg.telegram_bot_token.clone();
+    let bot_uri = cfg.telegram_bot_uri.clone();
+    //bot url for webhook
+    let url = bot_uri.parse().unwrap();
+
+    let lark_cfg: Arc<Vec<LarkCfg>> = Arc::new(cfg.lark_cfg);
+
+
+    let bot = Bot::new(bot_token);
+
+    let addr_web_server = ([0, 0, 0, 0], cfg.web_server_port).into();
+
+    let addr_bot = ([0, 0, 0, 0], cfg.telegram_bot_port).into();
+
+    let state: Arc<Bot> = Arc::new(bot.clone());
 
     let route = Router::new()
-        .route("/forward", get(forward))
-        .layer(Extension(state));
-
-    // let app = Router::new().nest("/", forward_route);
+        .route("/notice/lark", post(lark_notice))
+        .route("/notice/telegram", post(telegram_notice))
+        .layer(Extension(state))
+        .layer(Extension(lark_cfg));
 
     tokio::spawn(async move {
-        Server::bind(&addr_server)
+        Server::bind(&addr_web_server)
             .serve(route.into_make_service())
             .await
             .unwrap();
     });
-
-    let url = "https://test.io".parse().unwrap();
 
     let webhook_listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr_bot, url))
         .await
         .expect("Couldn't setup webhook");
 
     Command::repl_with_listener(bot, answer, webhook_listener).await;
+    // Ok(())
 }
-
-async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-
-    match cmd {
-        Command::Help => {
-            println!("help");
-            bot.send_message(msg.chat.id, Command::descriptions().to_string())
-                .await?
-        }
-        Command::ChatId => {
-            bot.send_message(msg.chat.id, format!("Your chat ID is {chat_id}"))
-                .await?
-        }
-
-        Command::Bind => {
-            bot.send_message(msg.chat.id, format!("Your chat ID is {chat_id}"))
-                .await?
-        }
-
-        Command::Save(text) => {
-            bot.send_message(msg.chat.id, format!("The URL you want to save is: {text}"))
-                .await?
-        }
-    };
-
-    Ok(())
-}
-
-//-831239370

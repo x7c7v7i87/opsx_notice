@@ -1,29 +1,59 @@
-# dev env runtime bin
+# This is a small robot notification developed using rust, supporting telegram and lark
 
-```text
-cargo install cargo-watch
+# This is a configuration information structure
+
+```json
+{
+    "web_server_port": 9191,
+    "telegram_bot_port": 8383,
+    "telegram_bot_token": "your telegram bot token",
+    "telegram_bot_uri": "your is telegram bot uri must be https type",
+    "lark_cfg":[
+        {
+            "name":"The request parameter is the name of the key",
+            "uri":"lark bot url ",
+            "token":"lark bot token"
+        }
+    ]
+}
 ```
 
-## the dev web hot update
+## config is name:cfg.json
 
-```txt
-->boss
-cargo watch -x 'run --bin bot'
-
-```
-
-## local .env
-
+## build
 ```env
-SERVER.ADDR=0.0.0.0:17778
-SERVER.PAGE_SIZE=30
-SERVER.CLIENT_ADDR=0.0.0.0:17776
-SERVER.BOSS_SECRET="passwd"
-SERVER.API_SECRET="passwd"
-
-RUST_LOG=debug
-
-DATABASE_URL=mysql://user:passwd@ip addr/use db
-REDIS_URL=redis://:passwd@ip addr:port
-
+cargo build --release
 ```
+
+
+## dev use https in ngrok
+
+### http request post
+
+#### lark bot to msg info
+
+> Requests and POST
+>> /notice/lark
+>> Requests and Parameter Description
+
+| Parameter      |     Type |     Must |   Parameter Description   |
+| :-------- | :--------| :------ | :------ |
+| message|  String|  yes|  msg |
+| key|  String|   yes| is cfg in lark_cfg->name |
+
+>> Response not Parameters
+
+#### telegram bot to msg info
+
+> Requests and POST
+>> /notice/telegram
+>> Requests and Parameter Description
+
+| Parameter      |     Type |     Must |   Parameter Description   |
+| :-------- | :--------| :------ | :------ |
+| message|  String|  yes|  msg |
+| key|  String|   yes| telegram chat id,can bot get chat id is command /chatid |
+
+>> Response not Parameters
+
+
