@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use axum::{routing::post, Extension, Router, Server};
+use axum::{routing::post, Extension, Router};
+
+use axum_server::Server;
 
 use teloxide::{dispatching::update_listeners::webhooks, prelude::*};
 
@@ -41,7 +43,7 @@ async fn main() {
         .layer(Extension(lark_cfg));
 
     tokio::spawn(async move {
-        Server::bind(&addr_web_server)
+        Server::bind(addr_web_server)
             .serve(route.into_make_service())
             .await
             .unwrap();
